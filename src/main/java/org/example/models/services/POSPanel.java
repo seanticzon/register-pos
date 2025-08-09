@@ -29,16 +29,14 @@ public class POSPanel {
         bottomBarPanel = new BottomBarPanel(basketPanel);
         ManualEntryPanel manualEntryPanel = new ManualEntryPanel(basketPanel::scanItem, journalService);
 
-        // ✅ Modern styled title bar
+        // Load icon from resources/images/example.png
         ImageIcon posIcon = null;
-        java.net.URL iconURL = getClass().getClassLoader().getResource("org/example/components/example.png");
+        java.net.URL iconURL = getClass().getClassLoader().getResource("images/cash-machine.png");
         if (iconURL != null) {
             posIcon = new ImageIcon(iconURL);
         } else {
-            System.err.println("Icon not found!");
+            System.err.println("Icon not found at images/example.png!");
         }
-
-
 
         TitleBarPanel titleBar = new TitleBarPanel("My POS System", posIcon);
 

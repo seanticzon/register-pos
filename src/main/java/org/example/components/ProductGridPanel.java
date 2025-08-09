@@ -2,8 +2,11 @@ package org.example.components;
 
 import org.example.models.services.JournalService;
 import org.example.models.services.PricebookService;
+import org.example.models.services.PopularItemsService;
+import org.example.models.services.Item;
 
 import javax.swing.*;
+import javax.swing.border.*;
 import java.awt.*;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +15,8 @@ import java.util.function.Consumer;
 public class ProductGridPanel {
     private final JPanel container;
     private final JPanel grid;
+    private final JPanel popularPanel;
+    private final JLabel popularLabel;
     private final JLabel pageLabel;
     private final List<String> productNames;
     private final JournalService journalService;
@@ -25,15 +30,55 @@ public class ProductGridPanel {
         this.journalService = journalService;
         productNames = PricebookService.getAllProductNames();
 
-        // Grid panel with padding around buttons
+        // Popular Items label
+        popularLabel = new JLabel("Popular Items");
+        popularLabel.setFont(new Font("Segoe UI Semibold", Font.BOLD, 16));
+        popularLabel.setForeground(new Color(50, 50, 50));
+        popularLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 0));
+
+        JButton reloadBtn = new JButton("Reload Popular");
+        reloadBtn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        reloadBtn.setFocusPainted(false);
+        reloadBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        reloadBtn.addActionListener(e -> reloadPopularItems(onItemClicked));
+
+        JPanel popularHeaderPanel = new JPanel(new BorderLayout());
+        popularHeaderPanel.setOpaque(false);
+        popularHeaderPanel.add(popularLabel, BorderLayout.WEST);
+        popularHeaderPanel.add(reloadBtn, BorderLayout.EAST);
+
+        popularPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        popularPanel.setOpaque(false);
+
+        // --- NEW: popularContainer with padding and titled border ---
+        JPanel popularContainer = new JPanel();
+        popularContainer.setLayout(new BorderLayout());
+        popularContainer.setOpaque(true);
+        popularContainer.setBackground(new Color(255, 250, 240)); // subtle cream background for popular
+        popularContainer.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(
+                        BorderFactory.createLineBorder(new Color(200, 180, 120), 2, true),
+                        "Popular Items",
+                        TitledBorder.LEFT,
+                        TitledBorder.TOP,
+                        new Font("Segoe UI Semibold", Font.BOLD, 16),
+                        new Color(80, 50, 20)
+                ),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+        popularContainer.add(popularHeaderPanel, BorderLayout.NORTH);
+        popularContainer.add(popularPanel, BorderLayout.CENTER);
+
         grid = new JPanel(new GridLayout(ROWS, COLUMNS, 15, 15));
         grid.setOpaque(false);
 
         JScrollPane scrollPane = new JScrollPane(grid);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(new Color(250, 250, 250)); // Light background
+        scrollPane.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createEmptyBorder(10, 10, 10, 10),
+                BorderFactory.createLineBorder(new Color(180, 180, 180), 1)
+        ));
+        scrollPane.getViewport().setBackground(new Color(245, 245, 245)); // Light gray background
 
-        // Navigation controls with modern look
         JButton prevBtn = createNavButton("◀ Previous");
         JButton nextBtn = createNavButton("Next ▶");
 
@@ -65,26 +110,33 @@ public class ProductGridPanel {
         navPanel.add(navButtons, BorderLayout.CENTER);
         navPanel.add(pageLabel, BorderLayout.SOUTH);
 
-        container = new JPanel(new BorderLayout(15, 15)) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                // subtle vertical gradient background
-                Graphics2D g2d = (Graphics2D) g;
-                int w = getWidth();
-                int h = getHeight();
-                Color c1 = new Color(245, 247, 250);
-                Color c2 = new Color(230, 235, 242);
-                GradientPaint gp = new GradientPaint(0, 0, c1, 0, h, c2);
-                g2d.setPaint(gp);
-                g2d.fillRect(0, 0, w, h);
-            }
-        };
+        // --- NEW: gridContainer with titled border and padding ---
+        JPanel gridContainer = new JPanel(new BorderLayout());
+        gridContainer.setOpaque(true);
+        gridContainer.setBackground(new Color(250, 250, 255)); // subtle bluish background for grid
+        gridContainer.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(
+                        BorderFactory.createLineBorder(new Color(150, 170, 220), 2, true),
+                        "Product Catalog",
+                        TitledBorder.LEFT,
+                        TitledBorder.TOP,
+                        new Font("Segoe UI Semibold", Font.BOLD, 16),
+                        new Color(50, 80, 150)
+                ),
+                BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        ));
+        gridContainer.add(scrollPane, BorderLayout.CENTER);
+        gridContainer.add(navPanel, BorderLayout.SOUTH);
 
+        container = new JPanel();
+        container.setLayout(new BorderLayout(15, 15));
         container.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        container.add(scrollPane, BorderLayout.CENTER);
-        container.add(navPanel, BorderLayout.SOUTH);
+        container.setBackground(new Color(245, 245, 245));
 
+        container.add(popularContainer, BorderLayout.NORTH);
+        container.add(gridContainer, BorderLayout.CENTER);
+
+        reloadPopularItems(onItemClicked);
         updateGrid(onItemClicked);
     }
 
@@ -98,7 +150,6 @@ public class ProductGridPanel {
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setOpaque(true);
 
-        // Hover effect
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 btn.setBackground(new Color(40, 110, 255));
@@ -110,6 +161,36 @@ public class ProductGridPanel {
         });
 
         return btn;
+    }
+
+    private void reloadPopularItems(Consumer<String> onItemClicked) {
+        popularPanel.removeAll();
+
+        List<Item> updatedPopularItems = PopularItemsService.getPopularItems(10);
+        for (Item item : updatedPopularItems) {
+            JButton btn = new JButton("<html><center>" + item.name + "</center></html>");
+            btn.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 14));
+            btn.setPreferredSize(new Dimension(120, 80));
+            btn.setFocusPainted(false);
+            btn.setBackground(new Color(255, 235, 205));
+            btn.setForeground(new Color(80, 50, 20));
+            btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(255, 180, 80)),
+                    BorderFactory.createEmptyBorder(8, 8, 8, 8)
+            ));
+            btn.setOpaque(true);
+
+            btn.addActionListener(e -> {
+                onItemClicked.accept(item.id);
+                journalService.log(item.id, 1, "Added (Popular Reloaded)");
+            });
+
+            popularPanel.add(btn);
+        }
+
+        popularPanel.revalidate();
+        popularPanel.repaint();
     }
 
     private void updateGrid(Consumer<String> onItemClicked) {
@@ -134,23 +215,18 @@ public class ProductGridPanel {
             ));
             btn.setOpaque(true);
 
-            // Subtle shadow effect - paint after
             btn.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
                 @Override
                 public void paint(Graphics g, JComponent c) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                    // Draw subtle shadow
                     g2.setColor(new Color(0, 0, 0, 15));
                     g2.fillRoundRect(2, c.getHeight() - 6, c.getWidth() - 4, 6, 8, 8);
-
                     super.paint(g2, c);
                     g2.dispose();
                 }
             });
 
-            // Hover effect: brighten background & border
             btn.addMouseListener(new java.awt.event.MouseAdapter() {
                 public void mouseEntered(java.awt.event.MouseEvent evt) {
                     btn.setBackground(new Color(240, 245, 255));

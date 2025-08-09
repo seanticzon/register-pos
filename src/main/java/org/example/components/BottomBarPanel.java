@@ -157,7 +157,23 @@ public class BottomBarPanel {
         }
 
         BigDecimal change = payment.subtract(totalWithTax);
-        JOptionPane.showMessageDialog(null, String.format("Payment Accepted!\nChange: $%.2f", change));
+
+        // Load the accepted.gif icon from resources/images/
+        ImageIcon acceptedIcon = null;
+        java.net.URL gifURL = getClass().getClassLoader().getResource("images/accepted.gif");
+        if (gifURL != null) {
+            acceptedIcon = new ImageIcon(gifURL);
+        } else {
+            System.err.println("Accepted GIF icon not found!");
+        }
+
+        JOptionPane.showMessageDialog(
+                null,
+                String.format("Payment Accepted!\nChange: $%.2f", change),
+                "Payment Success",
+                JOptionPane.INFORMATION_MESSAGE,
+                acceptedIcon
+        );
 
         String description = String.format(
                 "Payment Type: %s | Subtotal: $%.2f | Tax: $%.2f | Total: $%.2f | Tendered: $%.2f | Change: $%.2f",
@@ -170,6 +186,7 @@ public class BottomBarPanel {
 
         basketPanel.clearBasket(true);
     }
+
 
     private BigDecimal getExactTotal() {
         BigDecimal subtotal = basketPanel.calculateTotal();
