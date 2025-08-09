@@ -1,0 +1,6 @@
+2025-08-09 14:02:01.777232+08:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "ACTION CHARACTER VARYING(50)": "'Payment received: $3.00, Change: $1.19, Total: $1.81' (52)"; SQL statement:
+INSERT INTO journal (item_id, item_qty, action, datetime) VALUES (?, ?, ?, CURRENT_TIMESTAMP) [22001-224]
+2025-08-09 14:27:26.196036+08:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "ACTION CHARACTER VARYING(50)": "'Payment Type: Cash | Subtotal: $2.70 | Tax: $0.19 | Total: $2.89 | Tendered: $4... (98)"; SQL statement:
+INSERT INTO journal (item_id, item_qty, action, datetime) VALUES (?, ?, ?, CURRENT_TIMESTAMP) [22001-224]

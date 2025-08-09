@@ -11,7 +11,6 @@ public class Main {
         DatabaseManager.init(); // Starts H2 and sets up DB
         javax.swing.SwingUtilities.invokeLater(() -> {
             POSPanel posPanel = new POSPanel();
-            GlobalKeyScanner.install(posPanel); // Global scanner now inside services
         });
     }
 }

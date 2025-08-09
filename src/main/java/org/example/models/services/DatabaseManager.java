@@ -34,13 +34,18 @@ public class DatabaseManager {
                 )
             """);
 
+            // ✅ Insert system-reserved items for special journal actions
+            stmt.execute("INSERT INTO pricebook (id, name, price) VALUES ('SYS_PAYMENT', 'Payment Action', 0.00)");
+            stmt.execute("INSERT INTO pricebook (id, name, price) VALUES ('SYS_VOID_ALL', 'Void All Action', 0.00)");
+            stmt.execute("INSERT INTO pricebook (id, name, price) VALUES ('SYS_REFUND', 'Refund Action', 0.00)");
+
             // Journal Table
             stmt.execute("""
                 CREATE TABLE journal (
                     id IDENTITY PRIMARY KEY,
                     item_id VARCHAR(12),
                     item_qty INT,
-                    action VARCHAR(50),
+                    action VARCHAR(255),
                     datetime TIMESTAMP,
                     FOREIGN KEY (item_id) REFERENCES pricebook(id)
                 )
@@ -72,4 +77,3 @@ public class DatabaseManager {
         return DriverManager.getConnection(JDBC_URL, USER, PASSWORD);
     }
 }
-

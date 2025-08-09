@@ -1,10 +1,12 @@
 package org.example.models.services;
 
 import java.sql.*;
+import java.math.BigDecimal;
 
 public class JournalService {
 
-    public void log(String itemId, int qty, String action) {
+    // Existing log method (unchanged)
+    public static void log(String itemId, int qty, String action) {
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "INSERT INTO journal (item_id, item_qty, action, datetime) VALUES (?, ?, ?, CURRENT_TIMESTAMP)"
@@ -23,8 +25,17 @@ public class JournalService {
         }
     }
 
+    // New overloaded log method that accepts tax, appends tax info to action string
+    public static void log(String itemId, int qty, String action, BigDecimal tax) {
+        // Append tax info to action
+        String actionWithTax = String.format("%s | Tax: $%.2f", action, tax);
+
+        // Call existing log method
+        log(itemId, qty, actionWithTax);
+    }
+
     // Optional: Console output
-    public void printAllLogs() {
+    public static void printAllLogs() {
         try (Connection conn = DatabaseManager.getConnection()) {
             String logs = getAllLogs();
             System.out.println("===== All Journal Entries =====");
@@ -36,8 +47,8 @@ public class JournalService {
         }
     }
 
-    // NEW: Returns all logs as a formatted string
-    public String getAllLogs() {
+    // Returns all logs as a formatted string
+    public static String getAllLogs() {
         StringBuilder sb = new StringBuilder();
 
         try (Connection conn = DatabaseManager.getConnection();
@@ -63,7 +74,7 @@ public class JournalService {
         return sb.toString();
     }
 
-    public void clearLog() {
+    public static void clearLog() {
         try (Connection conn = DatabaseManager.getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DELETE FROM journal");
