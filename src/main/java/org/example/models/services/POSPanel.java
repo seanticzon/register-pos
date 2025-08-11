@@ -10,9 +10,18 @@ public class POSPanel {
     private BasketPanel basketPanel;
     private ProductGridPanel productGridPanel;
     private BottomBarPanel bottomBarPanel;
+    private JournalService journalService;
 
     public POSPanel() {
-        PricebookService.loadFromTSV();  // Load TSV on startup
+        // ✅ Initialize DB (drops and recreates tables)
+        DatabaseManager.init();
+
+        // ✅ Load data from TSV into DB
+        PricebookService.loadFromTSV();
+
+        // ✅ Populate fast in-memory cache from DB
+        PricebookService.loadCacheFromDatabase();
+
         setupUI();
     }
 
@@ -22,20 +31,24 @@ public class POSPanel {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
 
-        JournalService journalService = new JournalService();
+        journalService = new JournalService();
 
+        // Panels
         basketPanel = new BasketPanel(journalService);
-        productGridPanel = new ProductGridPanel(basketPanel::scanItem, journalService);
+        productGridPanel = new ProductGridPanel(code -> scanItem(code, "Panel"), journalService);
         bottomBarPanel = new BottomBarPanel(basketPanel);
-        ManualEntryPanel manualEntryPanel = new ManualEntryPanel(basketPanel::scanItem, journalService);
+        ManualEntryPanel manualEntryPanel = new ManualEntryPanel(code -> scanItem(code, "Keyboard"), journalService);
 
-        // Load icon from resources/images/example.png
+        // ✅ Install Global Scanner so barcode scans work anywhere
+        GlobalKeyScanner.install(this); // 🔹 removed journalService from call
+
+        // Load icon from resources
         ImageIcon posIcon = null;
         java.net.URL iconURL = getClass().getClassLoader().getResource("images/cash-machine.png");
         if (iconURL != null) {
             posIcon = new ImageIcon(iconURL);
         } else {
-            System.err.println("Icon not found at images/example.png!");
+            System.err.println("Icon not found at images/cash-machine.png!");
         }
 
         TitleBarPanel titleBar = new TitleBarPanel("My POS System", posIcon);
@@ -57,7 +70,23 @@ public class POSPanel {
         return frame;
     }
 
-    public void scanItem(String code) {
+    // New method to specify the source ("Panel" or "Scanner")
+    public void scanItem(String code, String source) {
+        JTable table = basketPanel.getTable();
+
+        if (table.isEditing()) {
+            table.getCellEditor().stopCellEditing();
+        }
+
+        table.clearSelection();
+
+        // Log with source
+        journalService.log(code, 1, "Added (" + source + ")");
         basketPanel.scanItem(code);
+    }
+
+    // Kept for backward compatibility (defaults to Panel)
+    public void scanItem(String code) {
+        scanItem(code, "Panel");
     }
 }

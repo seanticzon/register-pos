@@ -26,7 +26,7 @@ public class BasketPanel {
         model = new DefaultTableModel(new String[]{"ID", "Name", "Qty", "Price"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return true;
+                return false;
             }
         };
 

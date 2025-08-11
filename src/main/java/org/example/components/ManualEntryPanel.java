@@ -4,6 +4,7 @@ import org.example.models.services.JournalService;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
 import java.util.function.Consumer;
 
 public class ManualEntryPanel {
@@ -17,14 +18,33 @@ public class ManualEntryPanel {
 
         panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         codeField = new JTextField(20);
-        addButton = new JButton("Add");
 
+        // ✅ Prevent IntelliJ-specific clipboard formats from causing errors
+        codeField.setTransferHandler(new TransferHandler() {
+            @Override
+            public boolean importData(TransferSupport support) {
+                try {
+                    if (support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                        String data = (String) support.getTransferable().getTransferData(DataFlavor.stringFlavor);
+                        codeField.replaceSelection(data);
+                        return true;
+                    }
+                } catch (Exception ex) {
+                    // Swallow exceptions so IntelliJ formats don't spam logs
+                }
+                return false;
+            }
+
+            @Override
+            public boolean canImport(TransferSupport support) {
+                return support.isDataFlavorSupported(DataFlavor.stringFlavor);
+            }
+        });
+
+        addButton = new JButton("Add");
         addButton.addActionListener(e -> {
             String code = codeField.getText().trim();
             if (!code.isEmpty()) {
-                // ✅ Log the action before scanning
-                journalService.log(code, 1, "Added (Keyboard)");
-
                 onScan.accept(code);
                 codeField.setText("");
             }

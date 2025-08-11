@@ -10,13 +10,13 @@ public class TitleBarPanel extends JPanel {
     private final JLabel dateTimeLabel;
     private final JLabel welcomeLabel;
     private final String[] welcomeMessages = {
-            "WELCOME",
-            "HELLO THERE",
-            "GOOD TO SEE YOU",
-            "HAVE A GREAT DAY",
+            "WELCOME!",
+            "HELLO THERE!",
+            "GOOD TO SEE YOU!",
+            "HAVE A GREAT DAY!",
             "READY TO START?",
-            "LET'S DO THIS",
-            "YOUR POS SYSTEM"
+            "LET'S DO THIS!",
+        "YOUR POS SYSTEM!"
     };
     private int welcomeIndex = 0;
 

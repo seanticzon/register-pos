@@ -30,7 +30,7 @@ public class ProductGridPanel {
         this.journalService = journalService;
         productNames = PricebookService.getAllProductNames();
 
-        // Popular Items label
+        // Popular Items label (keep this, remove title border duplication)
         popularLabel = new JLabel("Popular Items");
         popularLabel.setFont(new Font("Segoe UI Semibold", Font.BOLD, 16));
         popularLabel.setForeground(new Color(50, 50, 50));
@@ -50,20 +50,13 @@ public class ProductGridPanel {
         popularPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         popularPanel.setOpaque(false);
 
-        // --- NEW: popularContainer with padding and titled border ---
+        // --- popularContainer without title text to avoid duplicate label ---
         JPanel popularContainer = new JPanel();
         popularContainer.setLayout(new BorderLayout());
         popularContainer.setOpaque(true);
         popularContainer.setBackground(new Color(255, 250, 240)); // subtle cream background for popular
         popularContainer.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder(
-                        BorderFactory.createLineBorder(new Color(200, 180, 120), 2, true),
-                        "Popular Items",
-                        TitledBorder.LEFT,
-                        TitledBorder.TOP,
-                        new Font("Segoe UI Semibold", Font.BOLD, 16),
-                        new Color(80, 50, 20)
-                ),
+                BorderFactory.createLineBorder(new Color(200, 180, 120), 2, true),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
         popularContainer.add(popularHeaderPanel, BorderLayout.NORTH);
@@ -110,7 +103,7 @@ public class ProductGridPanel {
         navPanel.add(navButtons, BorderLayout.CENTER);
         navPanel.add(pageLabel, BorderLayout.SOUTH);
 
-        // --- NEW: gridContainer with titled border and padding ---
+        // --- gridContainer with title ---
         JPanel gridContainer = new JPanel(new BorderLayout());
         gridContainer.setOpaque(true);
         gridContainer.setBackground(new Color(250, 250, 255)); // subtle bluish background for grid
@@ -183,7 +176,6 @@ public class ProductGridPanel {
 
             btn.addActionListener(e -> {
                 onItemClicked.accept(item.id);
-                journalService.log(item.id, 1, "Added (Popular Reloaded)");
             });
 
             popularPanel.add(btn);
@@ -249,7 +241,6 @@ public class ProductGridPanel {
                 Optional<String> id = PricebookService.getIdByName(name);
                 id.ifPresent(itemId -> {
                     onItemClicked.accept(itemId);
-                    journalService.log(itemId, 1, "Added (Panel)");
                 });
             });
 
