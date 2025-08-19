@@ -2,10 +2,15 @@ package org.example.models.services;
 
 import java.sql.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class JournalService {
 
-    // Existing log method (unchanged)
+    private static final SocketService socketService = SocketService.getInstance();
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    // Updated log method with socket communication
     public static void log(String itemId, int qty, String action) {
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
@@ -17,7 +22,15 @@ public class JournalService {
             stmt.setString(3, action);
             stmt.executeUpdate();
 
+            // Create formatted log message for server
+            String timestamp = LocalDateTime.now().format(formatter);
+            String logMessage = String.format("[%s] ItemID: %s | Qty: %d | Action: %s", 
+                                             timestamp, itemId, qty, action);
+
             System.out.printf("[Journal] Logged → ItemID: %s | Qty: %d | Action: %s%n", itemId, qty, action);
+
+            // Send to server
+            sendLogToServer(logMessage);
 
         } catch (Exception e) {
             System.err.println("Journal log error:");
@@ -33,6 +46,25 @@ public class JournalService {
         // Call existing log method
         log(itemId, qty, actionWithTax);
     }
+
+    private static void sendLogToServer(String logMessage) {
+        try {
+            socketService.sendLog(logMessage);
+        } catch (Exception e) {
+            System.err.println("[Journal] Failed to send log to server: " + e.getMessage());
+        }
+    }
+
+    // Method to manually connect to server (call this during startup)
+    public static void connectToServer() {
+        socketService.connect();
+    }
+
+    // Method to disconnect from server (call this during shutdown)
+    public static void disconnectFromServer() {
+        socketService.disconnect();
+    }
+
 
 //    // Optional: Console output
 //    public static void printAllLogs() {

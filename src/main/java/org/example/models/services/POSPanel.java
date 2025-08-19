@@ -13,8 +13,6 @@ public class POSPanel {
     private JournalService journalService;
 
     public POSPanel() {
-        // ✅ Initialize DB (drops and recreates tables)
-        DatabaseManager.init();
 
         // ✅ Load data from TSV into DB
         PricebookService.loadFromTSV();
@@ -36,7 +34,7 @@ public class POSPanel {
         // Panels
         basketPanel = new BasketPanel(journalService);
         productGridPanel = new ProductGridPanel(code -> scanItem(code, "Panel"), journalService);
-        bottomBarPanel = new BottomBarPanel(basketPanel);
+        bottomBarPanel = new BottomBarPanel(basketPanel, frame);
         ManualEntryPanel manualEntryPanel = new ManualEntryPanel(code -> scanItem(code, "Keyboard"), journalService);
 
         // ✅ Install Global Scanner so barcode scans work anywhere

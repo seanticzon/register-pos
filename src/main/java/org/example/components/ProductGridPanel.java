@@ -13,6 +13,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 public class ProductGridPanel {
+    private final JButton[] popularShortcutButtons = new JButton[12];
+    private final boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
     private final JPanel container;
     private final JPanel grid;
     private final JPanel popularPanel;
@@ -31,7 +33,7 @@ public class ProductGridPanel {
         productNames = PricebookService.getAllProductNames();
 
         // Popular Items label (keep this, remove title border duplication)
-        popularLabel = new JLabel("Popular Items");
+        popularLabel = new JLabel(isMac ? "Popular Items (F1–F12)" : "Popular Items (F1–F12)");
         popularLabel.setFont(new Font("Segoe UI Semibold", Font.BOLD, 16));
         popularLabel.setForeground(new Color(50, 50, 50));
         popularLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 0));
@@ -131,6 +133,63 @@ public class ProductGridPanel {
 
         reloadPopularItems(onItemClicked);
         updateGrid(onItemClicked);
+
+        // Install F1-F12 shortcuts to trigger popular items
+        installFunctionKeyBindings(container);
+    }
+
+    private void installFunctionKeyBindings(JComponent root) {
+        InputMap im = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = root.getActionMap();
+        // Base F1-F12 bindings (all OS)
+        for (int i = 0; i < 12; i++) {
+            final int idx = i;
+            String actionKey = "popular_f" + (i + 1);
+            KeyStroke ks = KeyStroke.getKeyStroke("F" + (i + 1));
+            im.put(ks, actionKey);
+            am.put(actionKey, new AbstractAction() {
+                @Override
+                public void actionPerformed(java.awt.event.ActionEvent e) {
+                    JButton btn = popularShortcutButtons[idx];
+                    if (btn != null && btn.isEnabled() && btn.isShowing()) {
+                        btn.doClick();
+                    }
+                }
+            });
+        }
+        // macOS-friendly alternatives: ⌘1–⌘9, ⌘0, ⌘- (minus), ⌘= (equals)
+        if (isMac) {
+            int mask = java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(); // ⌘ on Mac
+            int[] vk = new int[]{
+                    java.awt.event.KeyEvent.VK_1,
+                    java.awt.event.KeyEvent.VK_2,
+                    java.awt.event.KeyEvent.VK_3,
+                    java.awt.event.KeyEvent.VK_4,
+                    java.awt.event.KeyEvent.VK_5,
+                    java.awt.event.KeyEvent.VK_6,
+                    java.awt.event.KeyEvent.VK_7,
+                    java.awt.event.KeyEvent.VK_8,
+                    java.awt.event.KeyEvent.VK_9,
+                    java.awt.event.KeyEvent.VK_0,
+                    java.awt.event.KeyEvent.VK_MINUS,
+                    java.awt.event.KeyEvent.VK_EQUALS
+            };
+            for (int i = 0; i < 12; i++) {
+                final int idx = i;
+                String actionKey = "popular_cmd_" + (i + 1);
+                KeyStroke ks = KeyStroke.getKeyStroke(vk[i], mask);
+                im.put(ks, actionKey);
+                am.put(actionKey, new AbstractAction() {
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent e) {
+                        JButton btn = popularShortcutButtons[idx];
+                        if (btn != null && btn.isEnabled() && btn.isShowing()) {
+                            btn.doClick();
+                        }
+                    }
+                });
+            }
+        }
     }
 
     private JButton createNavButton(String text) {
@@ -158,12 +217,23 @@ public class ProductGridPanel {
 
     private void reloadPopularItems(Consumer<String> onItemClicked) {
         popularPanel.removeAll();
+        // clear previous shortcuts
+        for (int i = 0; i < popularShortcutButtons.length; i++) {
+            popularShortcutButtons[i] = null;
+        }
 
-        List<Item> updatedPopularItems = PopularItemsService.getPopularItems(10);
+        List<Item> updatedPopularItems = PopularItemsService.getPopularItems(12);
+        int idx = 0;
         for (Item item : updatedPopularItems) {
-            JButton btn = new JButton("<html><center>" + item.name + "</center></html>");
-            btn.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 14));
-            btn.setPreferredSize(new Dimension(120, 80));
+            if (idx >= 12) break; // safety
+            String shortcut = "F" + (idx + 1);
+            String html = "<html><div style='text-align:center'>"
+                    + "<div style='font-size:11px;color:#8a5a2b;font-weight:bold'>" + shortcut + "</div>"
+                    + "<div style='margin-top:2px'>" + item.name + "</div>"
+                    + "</div></html>";
+            JButton btn = new JButton(html);
+            btn.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 13));
+            btn.setPreferredSize(new Dimension(140, 80));
             btn.setFocusPainted(false);
             btn.setBackground(new Color(255, 235, 205));
             btn.setForeground(new Color(80, 50, 20));
@@ -173,12 +243,20 @@ public class ProductGridPanel {
                     BorderFactory.createEmptyBorder(8, 8, 8, 8)
             ));
             btn.setOpaque(true);
+            String macAlt = null;
+            if (isMac) {
+                if (idx >= 0 && idx <= 8) macAlt = "⌘" + (idx + 1);
+                else if (idx == 9) macAlt = "⌘0";
+                else if (idx == 10) macAlt = "⌘-";
+                else if (idx == 11) macAlt = "⌘=";
+            }
+            btn.setToolTipText(macAlt != null ? ("Shortcut: " + shortcut + " or " + macAlt) : ("Shortcut: " + shortcut));
 
-            btn.addActionListener(e -> {
-                onItemClicked.accept(item.id);
-            });
+            btn.addActionListener(e -> onItemClicked.accept(item.id));
 
             popularPanel.add(btn);
+            popularShortcutButtons[idx] = btn;
+            idx++;
         }
 
         popularPanel.revalidate();
