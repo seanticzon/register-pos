@@ -12,4 +12,16 @@ public class Item {
         this.name = name;
         this.price = price;
     }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {  // add this getter
+        return name;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
 }

@@ -35,10 +35,8 @@ public class DatabaseManager {
             """);
 
             // ✅ Insert system-reserved items for special journal actions
-            stmt.execute("INSERT INTO pricebook (id, name, price) VALUES ('SYS_PAYMENT', 'Payment Action', 0.00)");
-            stmt.execute("INSERT INTO pricebook (id, name, price) VALUES ('SYS_VOID_ALL', 'Void All Action', 0.00)");
-            stmt.execute("INSERT INTO pricebook (id, name, price) VALUES ('SYS_REFUND', 'Refund Action', 0.00)");
-
+            //stmt.execute("INSERT INTO pricebook (id, name, price) VALUES ('SYS_PAYMENT', 'Payment Action', 0.00)");
+            //stmt.execute("INSERT INTO pricebook (id, name, price) VALUES ('SYS_VOID_ALL', 'Void All Action', 0.00)");
             // Journal Table
             stmt.execute("""
                 CREATE TABLE journal (
@@ -71,7 +69,7 @@ public class DatabaseManager {
         } catch (Exception e) {
             System.out.println("Database setup error: " + e.getMessage());
         }
-    }
+     }
 
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(JDBC_URL, USER, PASSWORD);

@@ -2,16 +2,23 @@ package org.example.components;
 
 import org.example.models.services.JournalService;
 import org.example.models.services.PricebookService;
+import org.example.models.services.PopularItemsService;
+import org.example.models.services.Item;
 
 import javax.swing.*;
+import javax.swing.border.*;
 import java.awt.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
 public class ProductGridPanel {
+    private final JButton[] popularShortcutButtons = new JButton[12];
+    private final boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
     private final JPanel container;
     private final JPanel grid;
+    private final JPanel popularPanel;
+    private final JLabel popularLabel;
     private final JLabel pageLabel;
     private final List<String> productNames;
     private final JournalService journalService;
@@ -25,15 +32,48 @@ public class ProductGridPanel {
         this.journalService = journalService;
         productNames = PricebookService.getAllProductNames();
 
-        // Grid panel with padding around buttons
+        // Popular Items label (keep this, remove title border duplication)
+        popularLabel = new JLabel(isMac ? "Popular Items (F1–F12)" : "Popular Items (F1–F12)");
+        popularLabel.setFont(new Font("Segoe UI Semibold", Font.BOLD, 16));
+        popularLabel.setForeground(new Color(50, 50, 50));
+        popularLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 0));
+
+        JButton reloadBtn = new JButton("Reload Popular");
+        reloadBtn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        reloadBtn.setFocusPainted(false);
+        reloadBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        reloadBtn.addActionListener(e -> reloadPopularItems(onItemClicked));
+
+        JPanel popularHeaderPanel = new JPanel(new BorderLayout());
+        popularHeaderPanel.setOpaque(false);
+        popularHeaderPanel.add(popularLabel, BorderLayout.WEST);
+        popularHeaderPanel.add(reloadBtn, BorderLayout.EAST);
+
+        popularPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        popularPanel.setOpaque(false);
+
+        // --- popularContainer without title text to avoid duplicate label ---
+        JPanel popularContainer = new JPanel();
+        popularContainer.setLayout(new BorderLayout());
+        popularContainer.setOpaque(true);
+        popularContainer.setBackground(new Color(255, 250, 240)); // subtle cream background for popular
+        popularContainer.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 180, 120), 2, true),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+        popularContainer.add(popularHeaderPanel, BorderLayout.NORTH);
+        popularContainer.add(popularPanel, BorderLayout.CENTER);
+
         grid = new JPanel(new GridLayout(ROWS, COLUMNS, 15, 15));
         grid.setOpaque(false);
 
         JScrollPane scrollPane = new JScrollPane(grid);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(new Color(250, 250, 250)); // Light background
+        scrollPane.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createEmptyBorder(10, 10, 10, 10),
+                BorderFactory.createLineBorder(new Color(180, 180, 180), 1)
+        ));
+        scrollPane.getViewport().setBackground(new Color(245, 245, 245)); // Light gray background
 
-        // Navigation controls with modern look
         JButton prevBtn = createNavButton("◀ Previous");
         JButton nextBtn = createNavButton("Next ▶");
 
@@ -65,27 +105,91 @@ public class ProductGridPanel {
         navPanel.add(navButtons, BorderLayout.CENTER);
         navPanel.add(pageLabel, BorderLayout.SOUTH);
 
-        container = new JPanel(new BorderLayout(15, 15)) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                // subtle vertical gradient background
-                Graphics2D g2d = (Graphics2D) g;
-                int w = getWidth();
-                int h = getHeight();
-                Color c1 = new Color(245, 247, 250);
-                Color c2 = new Color(230, 235, 242);
-                GradientPaint gp = new GradientPaint(0, 0, c1, 0, h, c2);
-                g2d.setPaint(gp);
-                g2d.fillRect(0, 0, w, h);
-            }
-        };
+        // --- gridContainer with title ---
+        JPanel gridContainer = new JPanel(new BorderLayout());
+        gridContainer.setOpaque(true);
+        gridContainer.setBackground(new Color(250, 250, 255)); // subtle bluish background for grid
+        gridContainer.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(
+                        BorderFactory.createLineBorder(new Color(150, 170, 220), 2, true),
+                        "Product Catalog",
+                        TitledBorder.LEFT,
+                        TitledBorder.TOP,
+                        new Font("Segoe UI Semibold", Font.BOLD, 16),
+                        new Color(50, 80, 150)
+                ),
+                BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        ));
+        gridContainer.add(scrollPane, BorderLayout.CENTER);
+        gridContainer.add(navPanel, BorderLayout.SOUTH);
 
+        container = new JPanel();
+        container.setLayout(new BorderLayout(15, 15));
         container.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        container.add(scrollPane, BorderLayout.CENTER);
-        container.add(navPanel, BorderLayout.SOUTH);
+        container.setBackground(new Color(245, 245, 245));
 
+        container.add(popularContainer, BorderLayout.NORTH);
+        container.add(gridContainer, BorderLayout.CENTER);
+
+        reloadPopularItems(onItemClicked);
         updateGrid(onItemClicked);
+
+        // Install F1-F12 shortcuts to trigger popular items
+        installFunctionKeyBindings(container);
+    }
+
+    private void installFunctionKeyBindings(JComponent root) {
+        InputMap im = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = root.getActionMap();
+        // Base F1-F12 bindings (all OS)
+        for (int i = 0; i < 12; i++) {
+            final int idx = i;
+            String actionKey = "popular_f" + (i + 1);
+            KeyStroke ks = KeyStroke.getKeyStroke("F" + (i + 1));
+            im.put(ks, actionKey);
+            am.put(actionKey, new AbstractAction() {
+                @Override
+                public void actionPerformed(java.awt.event.ActionEvent e) {
+                    JButton btn = popularShortcutButtons[idx];
+                    if (btn != null && btn.isEnabled() && btn.isShowing()) {
+                        btn.doClick();
+                    }
+                }
+            });
+        }
+        // macOS-friendly alternatives: ⌘1–⌘9, ⌘0, ⌘- (minus), ⌘= (equals)
+        if (isMac) {
+            int mask = java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(); // ⌘ on Mac
+            int[] vk = new int[]{
+                    java.awt.event.KeyEvent.VK_1,
+                    java.awt.event.KeyEvent.VK_2,
+                    java.awt.event.KeyEvent.VK_3,
+                    java.awt.event.KeyEvent.VK_4,
+                    java.awt.event.KeyEvent.VK_5,
+                    java.awt.event.KeyEvent.VK_6,
+                    java.awt.event.KeyEvent.VK_7,
+                    java.awt.event.KeyEvent.VK_8,
+                    java.awt.event.KeyEvent.VK_9,
+                    java.awt.event.KeyEvent.VK_0,
+                    java.awt.event.KeyEvent.VK_MINUS,
+                    java.awt.event.KeyEvent.VK_EQUALS
+            };
+            for (int i = 0; i < 12; i++) {
+                final int idx = i;
+                String actionKey = "popular_cmd_" + (i + 1);
+                KeyStroke ks = KeyStroke.getKeyStroke(vk[i], mask);
+                im.put(ks, actionKey);
+                am.put(actionKey, new AbstractAction() {
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent e) {
+                        JButton btn = popularShortcutButtons[idx];
+                        if (btn != null && btn.isEnabled() && btn.isShowing()) {
+                            btn.doClick();
+                        }
+                    }
+                });
+            }
+        }
     }
 
     private JButton createNavButton(String text) {
@@ -98,7 +202,6 @@ public class ProductGridPanel {
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setOpaque(true);
 
-        // Hover effect
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 btn.setBackground(new Color(40, 110, 255));
@@ -110,6 +213,54 @@ public class ProductGridPanel {
         });
 
         return btn;
+    }
+
+    private void reloadPopularItems(Consumer<String> onItemClicked) {
+        popularPanel.removeAll();
+        // clear previous shortcuts
+        for (int i = 0; i < popularShortcutButtons.length; i++) {
+            popularShortcutButtons[i] = null;
+        }
+
+        List<Item> updatedPopularItems = PopularItemsService.getPopularItems(12);
+        int idx = 0;
+        for (Item item : updatedPopularItems) {
+            if (idx >= 12) break; // safety
+            String shortcut = "F" + (idx + 1);
+            String html = "<html><div style='text-align:center'>"
+                    + "<div style='font-size:11px;color:#8a5a2b;font-weight:bold'>" + shortcut + "</div>"
+                    + "<div style='margin-top:2px'>" + item.name + "</div>"
+                    + "</div></html>";
+            JButton btn = new JButton(html);
+            btn.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 13));
+            btn.setPreferredSize(new Dimension(140, 80));
+            btn.setFocusPainted(false);
+            btn.setBackground(new Color(255, 235, 205));
+            btn.setForeground(new Color(80, 50, 20));
+            btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(255, 180, 80)),
+                    BorderFactory.createEmptyBorder(8, 8, 8, 8)
+            ));
+            btn.setOpaque(true);
+            String macAlt = null;
+            if (isMac) {
+                if (idx >= 0 && idx <= 8) macAlt = "⌘" + (idx + 1);
+                else if (idx == 9) macAlt = "⌘0";
+                else if (idx == 10) macAlt = "⌘-";
+                else if (idx == 11) macAlt = "⌘=";
+            }
+            btn.setToolTipText(macAlt != null ? ("Shortcut: " + shortcut + " or " + macAlt) : ("Shortcut: " + shortcut));
+
+            btn.addActionListener(e -> onItemClicked.accept(item.id));
+
+            popularPanel.add(btn);
+            popularShortcutButtons[idx] = btn;
+            idx++;
+        }
+
+        popularPanel.revalidate();
+        popularPanel.repaint();
     }
 
     private void updateGrid(Consumer<String> onItemClicked) {
@@ -134,23 +285,18 @@ public class ProductGridPanel {
             ));
             btn.setOpaque(true);
 
-            // Subtle shadow effect - paint after
             btn.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
                 @Override
                 public void paint(Graphics g, JComponent c) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                    // Draw subtle shadow
                     g2.setColor(new Color(0, 0, 0, 15));
                     g2.fillRoundRect(2, c.getHeight() - 6, c.getWidth() - 4, 6, 8, 8);
-
                     super.paint(g2, c);
                     g2.dispose();
                 }
             });
 
-            // Hover effect: brighten background & border
             btn.addMouseListener(new java.awt.event.MouseAdapter() {
                 public void mouseEntered(java.awt.event.MouseEvent evt) {
                     btn.setBackground(new Color(240, 245, 255));
@@ -173,7 +319,6 @@ public class ProductGridPanel {
                 Optional<String> id = PricebookService.getIdByName(name);
                 id.ifPresent(itemId -> {
                     onItemClicked.accept(itemId);
-                    journalService.log(itemId, 1, "Added (Panel)");
                 });
             });
 
